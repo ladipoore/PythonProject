@@ -6,7 +6,7 @@ Created on Sun Apr 23 19:12:11 2017
 from bs4 import BeautifulSoup
 import requests
 
-class Game:
+class Game(object):
     price = 0
     num = 0
     name = ""
@@ -19,7 +19,7 @@ class Game:
     overall = {}
     
     
-class Prize(Game):
+class Prize(object):
     amount =0
     odds = 0
     winners =0
@@ -81,6 +81,11 @@ for row in rows:
                     g.prizes.append(p)
 
 for x in all_lottodata:#Just some code to test out the classes and loops. Will be removed before final version.
-    print(x.name)
-    print(x.overall)
+    #print(x.name)
+    #print(x.overall)
+    print(x.more)
+    #print (len(x.prizes))
+    #for v in x.prizes:
+        #print(v.amount)
+    break
     #Note: The ticket "Super Ticket" does not have a summary line on their website sometimes so it might return an empty dict which should be ignored.
