@@ -1,0 +1,290 @@
+print("Status: 200 OK")
+print("Content-type: text/html")
+print("")
+
+#Starting the website!
+print("<!DOCTYPE html>");
+print("<html>")
+print("<head>")
+print("<title>California Lottery Selection</title>")
+print("<script src='https://code.jquery.com/jquery-2.2.4.min.js' crossorigin='anonymous'></script>")
+print("<link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/materialize/0.98.2/css/materialize.min.css'>")
+print("<script src='https://cdnjs.cloudflare.com/ajax/libs/materialize/0.98.2/js/materialize.min.js'></script>")
+print("<nav>")
+print("<div class='nav-wrapper green darken-2'>")
+print("<a href='#!' class='brand-logo'>Logo</a>")
+print("<ul class='right hide-on-med-and-down'>")
+print("<li class='active'><a href='evs.py'>Single Ticket</a></li>")
+print("<li><a href='allev.py'>All Tickets</a></li>")
+print("</ul>")
+print("</div>")
+print("</nav>")
+print("</head>")
+
+#Progress bar
+print("<div class='progress'>")
+print("<div class='determinate' style='width: 100%'></div>")
+print("</div>")
+
+#Collecting the selected option into the input dictionary
+inp = {}
+import os
+qs = os.environ["QUERY_STRING"]
+if len(qs) > 0:
+    args = qs.split("&")
+    for arg in args:
+        kv = arg.split("=")
+        inp[kv[0]] = kv[1]
+
+#Basic packages necessary for our project
+from bs4 import BeautifulSoup
+import requests
+
+class Game:
+    price = 0
+    name = ""
+    more = ""
+    prizes =[]
+    
+class Prize(Game):
+    amount =0
+    odds = 0
+    winners =0
+    claimed =0
+    available = 0
+    
+prizes_url='http://www.calottery.com/play/scratchers-games/top-prizes-remaining'
+all_lottodata =[]
+
+#Will be put into a module to extract the relevant data from the website whenever the program is called
+#or maybe not. 
+r = requests.get(prizes_url)
+soup = BeautifulSoup(r.text,"lxml")
+data_table = soup.find('table',id='topprizetable')
+rows = data_table.findAll('tr')
+
+for row in rows:
+    if len(row) != 8:
+        continue
+    else:
+        cells = row.findAll('td')
+        g = Game()
+        g.price = int(str(cells[0].text.strip())[1:]) #convert to text, strip dollar sign and convert to int
+        g.name = cells[2].text.strip()
+        g.more = 'http://www.calottery.com'+str(cells[7].find('a')['href']) #explore this link for more information on all the prizes.
+        all_lottodata.append(g)
+        
+        
+        p = requests.get(g.more)
+        newsoup = BeautifulSoup(p.text,'lxml')
+        prizes_table = newsoup.find('table',class_='draw_games tag_even')
+        allprizes = prizes_table.findAll('tr')
+        
+        g.prizes=[]
+        for prize in allprizes:
+            if len(prize) ==5:
+                pdata = prize.findAll('td')
+                
+                if all(char.isalpha() for char in str(pdata[0].text.strip()) ):
+                    p=Prize()
+                    p.amount = str(pdata[0].text.strip()).replace(',','')
+                    p.odds = int(str(pdata[1].text.strip()).replace(',',''))
+                    p.winners = int(str(pdata[2].text.strip()).replace(',',''))
+                    p.claimed = int(str(pdata[3].text.strip()).replace(',',''))
+                    p.available = int(str(pdata[4].text.strip()).replace(',',''))
+                    g.prizes.append(p)
+                else:
+                    p = Prize()
+                    p.amount = int(str(pdata[0].text.strip()).replace(',','')[1:])
+                    p.odds = int(str(pdata[1].text.strip()).replace(',',''))
+                    p.winners = int(str(pdata[2].text.strip()).replace(',',''))
+                    p.claimed = int(str(pdata[3].text.strip()).replace(',',''))
+                    p.available = int(str(pdata[4].text.strip()).replace(',',''))
+                    g.prizes.append(p)
+
+all_lottodata = [x for x in all_lottodata if x.name]
+
+rows = []
+for x in all_lottodata:
+    for y in x.prizes:
+        rows.append([x.name, y.amount, y.odds, y.winners, y.claimed,y.available, x.price])
+        
+        
+class Ticket:
+    name = ''
+    prizes =[]
+    expected_value=0
+    new_expected_value = 0 
+    value_change = 0
+    price = 0
+    prob = 0
+    N=0
+    n=0
+    def predcount(self):
+        N = sum(prize['total_winners'] for prize in self.prizes)/sum(prize['probability'] for prize in self.prizes)
+        n = sum(prize['available'] for prize in self.prizes)/sum(prize['probability'] for prize in self.prizes)
+        self.n = n
+        self.N = N
+        return(self)
+
+    def new_prizes(self):
+        for prize in self.prizes:
+            prize['new_probability'] = prize['available']/self.n
+        return(self)
+
+tickets = []
+def info(data):
+    names =[]
+    for row in rows:
+        names.append((row[0],row[6]))
+    names = set(names)
+    for name in names:
+        t=Ticket()
+        t.name = name[0]
+        t.price = int(name[1])
+        tickets.append(t)
+    return(tickets)
+
+def prizes(lst, data):
+    tickets=[]
+    for ticket in lst:
+        ticketdata = list(filter(lambda x: x[0]==ticket.name and x[6] == ticket.price,data))
+        prizes=[]
+        for row in ticketdata:
+            try:
+                prize = {'prize':int(row[1]),'probability':1/int(row[2]),'total_winners':int(row[3]),'claimed':int(row[4]), 'available':int(row[5])}
+            except:
+                prize = {'prize':row[1],'probability':1/int(row[2]),'total_winners':int(row[3]),'claimed':int(row[4]), 'available':int(row[5])}
+            prizes.append(prize)
+        ticket.prizes = prizes
+        tickets.append(ticket)
+    return(tickets)
+
+def ev(item):
+    prize_probs = []
+    for prize in item.prizes:
+        prize_prob = (prize['prize'],prize['probability'])
+        prize_probs.append(prize_prob)
+    initev = sum(i[0]*i[1] for i in prize_probs if i[0] != 'Ticket')
+    if prize_probs[-1][0]=='Ticket':
+        ticketprize = prize_probs[-1] 
+        ticketprizevalue_wght = 1/(1/ticketprize[1]-1)
+        item.expected_value= (initev+ticketprizevalue_wght*initev)/item.price
+    else:
+        item.expected_value = initev/item.price
+    return(item)
+
+def newev(item):
+    prize_probs = []
+    for prize in item.prizes:
+        prize_prob = (prize['prize'],prize['new_probability'])
+        prize_probs.append(prize_prob)
+    initev = sum(i[0]*i[1] for i in prize_probs if i[0] != 'Ticket')
+    if prize_probs[-1][0]=='Ticket':
+        ticketprize = prize_probs[-1] 
+        ticketprizevalue_wght = 1/(1/ticketprize[1]-1)
+        item.new_expected_value= (initev+ticketprizevalue_wght*initev)/item.price
+    else:
+        item.new_expected_value = initev/item.price
+    return(item)
+
+def deltavalue(item):
+    old=item.expected_value
+    new=item.new_expected_value
+    item.valuechange = (new-old)/old
+    return(item)
+                       
+ticketlists = info(rows)
+ticketlists = prizes(ticketlists,rows)
+ticketlists = [ev(ticket) for ticket in ticketlists]
+ticketlists = [t.predcount() for t in ticketlists]
+ticketlists = [t.new_prizes() for t in ticketlists]
+ticketlists = [newev(ticket) for ticket in ticketlists]
+ticketlists = [deltavalue(ticket) for ticket in ticketlists]
+
+#Select your ticket
+print("<body>")
+print("<div class='container'>")
+print("<h1 align='center'>PICK YOUR TICKET!</h1>")
+print("<form action='evs.py'>")
+print("Pick a ticket: <select name='picked' class='browser-default' style='margin-bottom:20px;>")
+for ticket in ticketlists:
+    print("<option value='" + ticket.name + "'>" + ticket.name + "</option>")
+print("</select>")
+print("<button class='btn waves-effect waves-yellow teal lighten-3' type='submit' name='action'>Submit</button>")
+print("</form>")
+
+
+if "picked" in inp and len(inp['picked'])>0:
+    d = inp['picked']
+    tnames = list(map(lambda x: x.name, ticketlists))
+    #Make changes to string format due to web changes
+    d=d.replace('+',' ')
+    d=d.replace('%AE', '�')
+    d=d.replace('%24','$')
+    d=d.replace('%21','!')
+    d=d.replace('%2C',',')
+    if d[-1].isdigit():
+        d=d+"'S"
+    elif d=="STINKIN":
+        d+="' RICH"
+    if d in tnames:
+        #Print expected values
+        v = [x for x in ticketlists if x.name == d]
+
+        print("<div class='row'>")
+        #Left column - contains the initial expected value
+        print("<div class='col s4'>")
+        print("<div class='card-panel green lighten-2'>")
+        print("<h5 align='center'>Initial EV per USD: </h5>")
+        print("<h5 align='center'>"+'$'+"{0:.5f}".format(v[0].expected_value)+"</h5>")
+        print("</div>")
+        print("</div>")
+        #Center column - contains the final expected value
+        print("<div class='col s4'>")
+        print("<div class='card-panel green lighten-2'>")
+        print("<h5 align='center'>Final EV per USD: </h5>")
+        print("<h5 align='center'>"'$'+"{0:.5f}".format(v[0].new_expected_value)+"</h5>")
+        print("</div>")
+        print("</div>")
+        #Right column - contains the change in expected value
+        print("<div class='col s4'>")
+        print("<div class='card-panel green lighten-2'>")
+        print("<h5 align='center'>Change in EV: </h5>")
+        print("<h5 align='center'>{0:.2f}".format(v[0].valuechange *100)+'%'"</h5>")
+        print("</div>")
+        print("</div>")
+        print("</div>")
+
+        #print a chart showing the changes in the expected value
+        import matplotlib.pyplot as plt
+        import seaborn as sns
+        objnames = [x.name for x in ticketlists if x.name]
+        xnum = range(len(objnames))
+        performance = [x.valuechange for x in ticketlists if x.name]
+        width =0.9
+        colors = []
+        for value in objnames:
+            if d == value:
+                colors.append('yellow')
+            else:
+                colors.append('green')
+        plt.bar(xnum,performance, width, color=colors)
+        plt.suptitle("EV change relative to other tickets")
+        plt.xlabel("All Game Tickets")
+        plt.ylabel("Change in EV Value")
+        #plt.xticks(xnum, objnames) #not enough space to showcase ticket names
+        import uuid
+        perfplot = "plots/" + str(uuid.uuid4()) + ".png"
+        plt.savefig(perfplot)
+        print("<div class='card-panel hoverable'>") 
+        imgwidth = "860";
+        imgheight = "700";
+        print("<img src='" + perfplot + "' width=" + imgwidth + " height=" + imgheight+" align='center' /><br />")
+        print("</div>")
+
+
+    
+print("</div>")
+print("</body>")
+print("</html>")
