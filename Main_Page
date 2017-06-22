@@ -1,116 +1,50 @@
-<<<<<<< HEAD
-# -*- coding: utf-8 -*-
-"""
-Created on Sun Apr 23 19:12:11 2017
-@author: Oore
-"""
-from bs4 import BeautifulSoup
-import requests
+print("Status: 200 OK")
+print("Content-type: text/html")
+print("")
 
-class Game(object):
-    price = 0
-    num = 0
-    name = ""
-    top_prize = 0
-    all_winners = 0
-    claimed = 0
-    available = 0
-    more = ""
-    prizes =[]
-    overall = {}
-    
-    
-class Prize(object):
-    amount =0
-    odds = 0
-    winners =0
-    claimed =0
-    available = 0
-    
-    
-    
-prizes_url='http://www.calottery.com/play/scratchers-games/top-prizes-remaining'
-all_lottodata =[]
+#Starting the website!
+print("<!DOCTYPE html>");
+print("<html>")
+print("<head>")
+print("<title>California Lottery Selection</title>")
+print("<script src='https://code.jquery.com/jquery-2.2.4.min.js' crossorigin='anonymous'></script>")
+print("<link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/materialize/0.98.2/css/materialize.min.css'>")
+print("<script src='https://cdnjs.cloudflare.com/ajax/libs/materialize/0.98.2/js/materialize.min.js'></script>")
+print("<nav>")
+print("<div class='nav-wrapper green darken-2'>")
+print("<a href='#!' class='brand-logo'>Logo</a>")
+print("<ul class='right hide-on-med-and-down'>")
+print("<li class='active'><a href='evs.py'>Single Ticket</a></li>")
+print("<li><a href='allev.py'>All Tickets</a></li>")
+print("</ul>")
+print("</div>")
+print("</nav>")
+print("</head>")
 
-#Will be put into a module to extract the relevant data from the website whenever the program is called
-#or maybe not. 
-r = requests.get(prizes_url)
-soup = BeautifulSoup(r.text,"lxml")
-data_table = soup.find('table',id='topprizetable')
-rows = data_table.findAll('tr')
+#Progress bar
+print("<div class='progress'>")
+print("<div class='determinate' style='width: 100%'></div>")
+print("</div>")
 
-for row in rows:
-    if len(row) != 8:
-        continue
-    else:
-        cells = row.findAll('td')
-        g = Game()
-        g.price = int(str(cells[0].text.strip())[1:]) #convert to text, strip dollar sign and convert to int
-        g.num = int(cells[1].text.strip())
-        g.name = cells[2].text.strip()
-        g.top_prize = int(str(cells[3].text.strip()).replace(',','')[1:]) #convert from currency
-        g.all_winners = int(cells[4].text.strip().replace(',',''))
-        g.claimed = int(cells[5].text.strip().replace(',',''))
-        g.available = int(cells[6].text.strip().replace(',',''))
-        g.more = 'http://www.calottery.com'+str(cells[7].find('a')['href']) #explore this link for more information on all the prizes.
-        g.overall = {}
-        all_lottodata.append(g)
-        
-        
-        p = requests.get(g.more)
-        newsoup = BeautifulSoup(p.text,'lxml')
-        prizes_table = newsoup.find('table',class_='draw_games tag_even')
-        allprizes = prizes_table.findAll('tr')
-        
-        for prize in allprizes:
-            if len(prize) ==5:
-                pdata = prize.findAll('td')
-                
-                if all(char.isalpha() for char in str(pdata[0].text.strip()) ):
-                    g.overall['Odds']= int(str(pdata[1].text.strip()).replace(',',''))
-                    g.overall['Winners']= int(str(pdata[2].text.strip()).replace(',',''))
-                    g.overall['Pwon'] = int(str(pdata[3].text.strip()).replace(',',''))
-                    g.overall['Pavail'] = int(str(pdata[4].text.strip()).replace(',',''))
-                else:
-                    p = Prize()
-                    p.amount = int(str(pdata[0].text.strip()).replace(',','')[1:])
-                    p.odds = int(str(pdata[1].text.strip()).replace(',',''))
-                    p.winners = int(str(pdata[2].text.strip()).replace(',',''))
-                    p.claimed = int(str(pdata[3].text.strip()).replace(',',''))
-                    p.available = int(str(pdata[4].text.strip()).replace(',',''))
-                    
-                    g.prizes.append(p)
+#Collecting the selected option into the input dictionary
+inp = {}
+import os
+qs = os.environ["QUERY_STRING"]
+if len(qs) > 0:
+    args = qs.split("&")
+    for arg in args:
+        kv = arg.split("=")
+        inp[kv[0]] = kv[1]
 
-for x in all_lottodata:#Just some code to test out the classes and loops. Will be removed before final version.
-    #print(x.name)
-    #print(x.overall)
-    print(x.more)
-    #print (len(x.prizes))
-    #for v in x.prizes:
-        #print(v.amount)
-    break
-    #Note: The ticket "Super Ticket" does not have a summary line on their website sometimes so it might return an empty dict which should be ignored.
-=======
-# -*- coding: utf-8 -*-
-"""
-Created on Sun Apr 23 19:12:11 2017
-@author: Oore
-"""
+#Basic packages necessary for our project
 from bs4 import BeautifulSoup
 import requests
 
 class Game:
     price = 0
-    num = 0
     name = ""
-    top_prize = 0
-    all_winners = 0
-    claimed = 0
-    available = 0
     more = ""
     prizes =[]
-    overall = {}
-    
     
 class Prize(Game):
     amount =0
@@ -119,8 +53,6 @@ class Prize(Game):
     claimed =0
     available = 0
     
-    
-    
 prizes_url='http://www.calottery.com/play/scratchers-games/top-prizes-remaining'
 all_lottodata =[]
 
@@ -138,12 +70,7 @@ for row in rows:
         cells = row.findAll('td')
         g = Game()
         g.price = int(str(cells[0].text.strip())[1:]) #convert to text, strip dollar sign and convert to int
-        g.num = int(cells[1].text.strip())
         g.name = cells[2].text.strip()
-        g.top_prize = int(str(cells[3].text.strip()).replace(',','')[1:]) #convert from currency
-        g.all_winners = int(cells[4].text.strip().replace(',',''))
-        g.claimed = int(cells[5].text.strip().replace(',',''))
-        g.available = int(cells[6].text.strip().replace(',',''))
         g.more = 'http://www.calottery.com'+str(cells[7].find('a')['href']) #explore this link for more information on all the prizes.
         all_lottodata.append(g)
         
@@ -174,12 +101,6 @@ for row in rows:
                     p.claimed = int(str(pdata[3].text.strip()).replace(',',''))
                     p.available = int(str(pdata[4].text.strip()).replace(',',''))
                     g.prizes.append(p)
-
-"""for x in all_lottodata:#Just some code to test out the classes and loops. Will be removed before final version.
-    print(x.name)
-    print(x.overall)
-    for y in x.prizes:
-        print (y.amount)"""
 
 all_lottodata = [x for x in all_lottodata if x.name]
 
@@ -281,8 +202,89 @@ ticketlists = [t.new_prizes() for t in ticketlists]
 ticketlists = [newev(ticket) for ticket in ticketlists]
 ticketlists = [deltavalue(ticket) for ticket in ticketlists]
 
-
+#Select your ticket
+print("<body>")
+print("<div class='container'>")
+print("<h1 align='center'>PICK YOUR TICKET!</h1>")
+print("<form action='evs.py'>")
+print("Pick a ticket: <select name='picked' class='browser-default' style='margin-bottom:20px;>")
 for ticket in ticketlists:
-    change = str(ticket.valuechange*100)
-    print (ticket.name, change+"%", ticket.price)
->>>>>>> 9c581ac08c8d4bb55d27d791f2630c7876a7e708
+    print("<option value='" + ticket.name + "'>" + ticket.name + "</option>")
+print("</select>")
+print("<button class='btn waves-effect waves-yellow teal lighten-3' type='submit' name='action'>Submit</button>")
+print("</form>")
+
+
+if "picked" in inp and len(inp['picked'])>0:
+    d = inp['picked']
+    tnames = list(map(lambda x: x.name, ticketlists))
+    #Make changes to string format due to web changes
+    d=d.replace('+',' ')
+    d=d.replace('%AE', '�')
+    d=d.replace('%24','$')
+    d=d.replace('%21','!')
+    d=d.replace('%2C',',')
+    if d[-1].isdigit():
+        d=d+"'S"
+    elif d=="STINKIN":
+        d+="' RICH"
+    if d in tnames:
+        #Print expected values
+        v = [x for x in ticketlists if x.name == d]
+
+        print("<div class='row'>")
+        #Left column - contains the initial expected value
+        print("<div class='col s4'>")
+        print("<div class='card-panel green lighten-2'>")
+        print("<h5 align='center'>Initial EV per USD: </h5>")
+        print("<h5 align='center'>"+'$'+"{0:.5f}".format(v[0].expected_value)+"</h5>")
+        print("</div>")
+        print("</div>")
+        #Center column - contains the final expected value
+        print("<div class='col s4'>")
+        print("<div class='card-panel green lighten-2'>")
+        print("<h5 align='center'>Final EV per USD: </h5>")
+        print("<h5 align='center'>"'$'+"{0:.5f}".format(v[0].new_expected_value)+"</h5>")
+        print("</div>")
+        print("</div>")
+        #Right column - contains the change in expected value
+        print("<div class='col s4'>")
+        print("<div class='card-panel green lighten-2'>")
+        print("<h5 align='center'>Change in EV: </h5>")
+        print("<h5 align='center'>{0:.2f}".format(v[0].valuechange *100)+'%'"</h5>")
+        print("</div>")
+        print("</div>")
+        print("</div>")
+
+        #print a chart showing the changes in the expected value
+        import matplotlib.pyplot as plt
+        import seaborn as sns
+        objnames = [x.name for x in ticketlists if x.name]
+        xnum = range(len(objnames))
+        performance = [x.valuechange for x in ticketlists if x.name]
+        width =0.9
+        colors = []
+        for value in objnames:
+            if d == value:
+                colors.append('yellow')
+            else:
+                colors.append('green')
+        plt.bar(xnum,performance, width, color=colors)
+        plt.suptitle("EV change relative to other tickets")
+        plt.xlabel("All Game Tickets")
+        plt.ylabel("Change in EV Value")
+        #plt.xticks(xnum, objnames) #not enough space to showcase ticket names
+        import uuid
+        perfplot = "plots/" + str(uuid.uuid4()) + ".png"
+        plt.savefig(perfplot)
+        print("<div class='card-panel hoverable'>") 
+        imgwidth = "860";
+        imgheight = "700";
+        print("<img src='" + perfplot + "' width=" + imgwidth + " height=" + imgheight+" align='center' /><br />")
+        print("</div>")
+
+
+    
+print("</div>")
+print("</body>")
+print("</html>")
